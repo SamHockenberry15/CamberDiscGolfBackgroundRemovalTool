@@ -16,6 +16,9 @@ class Worker(QObject):
         self.inputFiles = inputFiles
         self.outputDir = outputDir
         self.pbNum = int(98/(len(inputFiles)*3))
+        self.imageNames = []
+        self.transparentBackgroundPictures = []
+        self.whiteBackgroundPictures = []
 
     def run(self):
         self.uiStatus.emit(False)
@@ -42,8 +45,6 @@ class Worker(QObject):
                 self.whiteBackgroundPictures.append(finalWhiteBackground)
                 self.imageNames.append(name)
                 self.progress.emit(self.pbNum)
-
-            self.saveFiles()
 
     def saveFiles(self):
         for i in range(0,len(self.imageNames)):

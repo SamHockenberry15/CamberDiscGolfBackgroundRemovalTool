@@ -29,6 +29,7 @@ class Ui(QtWidgets.QMainWindow):
         self.outputSelection.setText(str(self.outputDir))
 
     def startEditing(self):
+        self.progressBar.setValue(0)
         self.mainLabel.setText("Started!")
 
         self.thread = QThread()
