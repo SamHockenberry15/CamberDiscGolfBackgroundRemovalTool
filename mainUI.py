@@ -29,6 +29,8 @@ class Ui(QtWidgets.QMainWindow):
         self.outputSelection.setText(str(self.outputDir))
 
     def startEditing(self):
+        self.mainLabel.setText("Started!")
+
         self.thread = QThread()
         self.worker = Worker(self.inputFiles,self.outputDir)
 
@@ -37,6 +39,7 @@ class Ui(QtWidgets.QMainWindow):
         self.thread.started.connect(self.worker.run)
         self.worker.progress.connect(self.reportProgress)
         self.worker.uiStatus.connect(self.setUiStatus)
+        self.worker.finishedLabel.connect(self.setLabelFinished)
         self.thread.start()
 
     def setUiStatus(self, value):
@@ -49,6 +52,9 @@ class Ui(QtWidgets.QMainWindow):
     def reportProgress(self, newVal):
         val = self.progressBar.value()
         self.progressBar.setValue(newVal + val)
+
+    def setLabelFinished(self):
+        self.mainLabel.setText("Finished!")
 
 
 

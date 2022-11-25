@@ -9,6 +9,7 @@ class Worker(QObject):
 
     progress = pyqtSignal(int)
     uiStatus = pyqtSignal(bool)
+    finishedLabel = pyqtSignal()
 
     def __init__(self, inputFiles, outputDir):
         super(Worker, self).__init__()
@@ -56,3 +57,4 @@ class Worker(QObject):
             self.progress.emit(self.pbNum)
         self.progress.emit(100-(len(self.inputFiles)*3*self.pbNum))
         self.uiStatus.emit(True)
+        self.finishedLabel.emit()
