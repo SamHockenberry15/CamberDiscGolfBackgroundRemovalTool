@@ -1,3 +1,6 @@
 /venv
 /.idea
 /__pycache
+u2net.onnx
+build/
+dist/

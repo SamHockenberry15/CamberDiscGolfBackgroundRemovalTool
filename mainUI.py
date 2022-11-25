@@ -12,7 +12,7 @@ class Ui(QtWidgets.QMainWindow):
 
     def __init__(self):
         super(Ui, self).__init__()
-        uic.loadUi('camberUIDialog.ui', self)
+        uic.loadUi(r'C:\Users\samho\PycharmProjects\camberPhotoRemoval\camberUIDialog.ui', self)
 
         self.inputFileButton.clicked.connect(self.selectInputFiles)
         self.outputDirButton.clicked.connect(self.selectOutputDir)
