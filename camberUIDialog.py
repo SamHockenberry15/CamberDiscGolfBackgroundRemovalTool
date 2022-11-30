@@ -10,7 +10,6 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-import sys
 import os
 import easygui as eg
 from PyQt5.QtCore import QThread
