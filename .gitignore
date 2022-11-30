@@ -3,4 +3,3 @@
 /__pycache
 u2net.onnx
 build/
-dist/
