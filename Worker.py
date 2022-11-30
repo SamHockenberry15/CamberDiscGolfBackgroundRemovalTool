@@ -1,6 +1,8 @@
 from PyQt5.QtCore import QObject, pyqtSignal
 from rembg import remove
 from PIL import Image
+from rembg.session_simple import SimpleSession
+
 
 class Worker(QObject):
     imageNames = []
@@ -11,7 +13,7 @@ class Worker(QObject):
     uiStatus = pyqtSignal(bool)
     finishedLabel = pyqtSignal()
 
-    def __init__(self, inputFiles, outputDir):
+    def __init__(self, inputFiles, outputDir, session):
         super(Worker, self).__init__()
         self.inputFiles = inputFiles
         self.outputDir = outputDir
@@ -19,6 +21,7 @@ class Worker(QObject):
         self.imageNames = []
         self.transparentBackgroundPictures = []
         self.whiteBackgroundPictures = []
+        self.session = SimpleSession("u2net.onnx", session)
 
     def run(self):
         self.uiStatus.emit(False)
@@ -31,7 +34,7 @@ class Worker(QObject):
                 input = Image.open(img)
                 splitDir = img.split('\\')
                 name = splitDir[-1]
-                output = remove(input, alpha_matting=True)
+                output = remove(input, alpha_matting=True, session=self.session)
                 self.progress.emit(self.pbNum)
                 transP = output.rotate(270)
                 self.transparentBackgroundPictures.append(transP)
