@@ -3,6 +3,9 @@ from rembg import remove
 from PIL import Image
 from rembg.session_simple import SimpleSession
 
+import numpy as np
+import cv2 as cv
+
 
 class Worker(QObject):
     imageNames = []
@@ -20,12 +23,13 @@ class Worker(QObject):
         self.pbNum = int(98/(len(inputFiles)*3))
         self.imageNames = []
         self.transparentBackgroundPictures = []
-        self.whiteBackgroundPictures = []
+        self.tempWhiteBackgroundPictures = []
         self.session = SimpleSession("u2net.onnx", session)
 
     def run(self):
         self.uiStatus.emit(False)
         self.executePhotoEditing()
+        self.findEdgesOfImage()
         self.saveFiles()
 
     def executePhotoEditing(self):
@@ -45,9 +49,37 @@ class Worker(QObject):
                 whiteBackground.paste(output, mask=output.split()[3])
                 finalWhiteBackground = whiteBackground.rotate(270, fillcolor=(255, 255, 255))
 
-                self.whiteBackgroundPictures.append(finalWhiteBackground)
+                self.tempWhiteBackgroundPictures.append(finalWhiteBackground)
                 self.imageNames.append(name)
                 self.progress.emit(self.pbNum)
+
+    def findEdgesOfImage(self):
+        for img in self.tempWhiteBackgroundPictures:
+            open_cv_image = np.array(img)
+            # pic = open_cv_image[:,:,0]
+            # Convert RGB to BGR
+            curr = open_cv_image[:, :, ::-1].copy()
+
+            imgray = cv.cvtColor(curr, cv.COLOR_BGR2GRAY)
+            gray_blurred = cv.blur(imgray, (3, 3))
+            detected_circles = cv.HoughCircles(gray_blurred,
+                                                cv.HOUGH_GRADIENT, 1, 20, param1=50,
+                                                param2=30, minRadius=0, maxRadius=0)
+
+            if detected_circles is not None:
+                # Convert the circle parameters a, b and r to integers.
+                detected_circles = np.uint16(np.around(detected_circles))
+                pt = detected_circles[0,0]
+
+                a, b, r = pt[0], pt[1], pt[2]
+
+                minX = abs(a-r)
+                maxX = r+a
+                minY = abs(b-r)
+                maxY = r+b
+
+                newPic = open_cv_image[minY:maxY, minX:maxX,:]
+                self.whiteBackgroundPictures.append(Image.fromarray(newPic))
 
     def saveFiles(self):
         for i in range(0,len(self.imageNames)):
