@@ -9,8 +9,8 @@ import cv2 as cv
 
 class Worker(QObject):
     imageNames = []
-    transparentBackgroundPictures = []
-    whiteBackgroundPictures = []
+    finTransparentBackgroundPictures = []
+    finWhiteBackgroundPictures = []
 
     progress = pyqtSignal(int)
     uiStatus = pyqtSignal(bool)
@@ -22,14 +22,13 @@ class Worker(QObject):
         self.outputDir = outputDir
         self.pbNum = int(98/(len(inputFiles)*3))
         self.imageNames = []
-        self.transparentBackgroundPictures = []
+        self.tempTransparentBackgroundPictures = []
         self.tempWhiteBackgroundPictures = []
         self.session = SimpleSession("u2net.onnx", session)
 
     def run(self):
         self.uiStatus.emit(False)
         self.executePhotoEditing()
-        self.findEdgesOfImage()
         self.saveFiles()
 
     def executePhotoEditing(self):
@@ -41,7 +40,7 @@ class Worker(QObject):
                 output = remove(input, alpha_matting=True, session=self.session)
                 self.progress.emit(self.pbNum)
                 transP = output.rotate(270)
-                self.transparentBackgroundPictures.append(transP)
+                self.tempTransparentBackgroundPictures.append(transP)
 
                 output.load()
                 input_again_width, input_again_height = output.size
@@ -53,8 +52,11 @@ class Worker(QObject):
                 self.imageNames.append(name)
                 self.progress.emit(self.pbNum)
 
-    def findEdgesOfImage(self):
-        for img in self.tempWhiteBackgroundPictures:
+            self.cropImages(self.tempTransparentBackgroundPictures,self.finTransparentBackgroundPictures)
+            self.cropImages(self.tempWhiteBackgroundPictures, self.finWhiteBackgroundPictures)
+
+    def cropImages(self,lst,lstToSave):
+        for img in lst:
             open_cv_image = np.array(img)
             # pic = open_cv_image[:,:,0]
             # Convert RGB to BGR
@@ -79,15 +81,15 @@ class Worker(QObject):
                 maxY = r+b
 
                 newPic = open_cv_image[minY:maxY, minX:maxX,:]
-                self.whiteBackgroundPictures.append(Image.fromarray(newPic))
+                lstToSave.append(Image.fromarray(newPic))
 
     def saveFiles(self):
         for i in range(0,len(self.imageNames)):
             nameWithExt = str(self.imageNames[i])
             splitArr = nameWithExt.split('.')
             name = splitArr[0]
-            transP = self.transparentBackgroundPictures[i]
-            whiteP = self.whiteBackgroundPictures[i]
+            transP = self.finTransparentBackgroundPictures[i]
+            whiteP = self.finWhiteBackgroundPictures[i]
             transP.save(self.outputDir+'\\\\'+name+'Transparent.png')
             whiteP.save(self.outputDir+'\\\\'+name+'White.png')
             self.progress.emit(self.pbNum)
