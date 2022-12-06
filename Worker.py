@@ -8,9 +8,6 @@ import cv2 as cv
 
 
 class Worker(QObject):
-    imageNames = []
-    finTransparentBackgroundPictures = []
-    finWhiteBackgroundPictures = []
 
     progress = pyqtSignal(int)
     uiStatus = pyqtSignal(bool)
@@ -24,6 +21,8 @@ class Worker(QObject):
         self.imageNames = []
         self.tempTransparentBackgroundPictures = []
         self.tempWhiteBackgroundPictures = []
+        self.finWhiteBackgroundPictures = []
+        self.finTransparentBackgroundPictures = []
         self.session = SimpleSession("u2net.onnx", session)
 
     def run(self):
@@ -40,7 +39,7 @@ class Worker(QObject):
                 output = remove(input, alpha_matting=True, session=self.session)
                 self.progress.emit(self.pbNum)
                 transP = output.rotate(270)
-                self.tempTransparentBackgroundPictures.append(transP)
+                # self.tempTransparentBackgroundPictures.append(transP)
 
                 output.load()
                 input_again_width, input_again_height = output.size
@@ -52,12 +51,11 @@ class Worker(QObject):
                 self.imageNames.append(name)
                 self.progress.emit(self.pbNum)
 
-            self.cropImages(self.tempTransparentBackgroundPictures,self.finTransparentBackgroundPictures)
-            self.cropImages(self.tempWhiteBackgroundPictures, self.finWhiteBackgroundPictures)
+            self.cropImages()
 
-    def cropImages(self,lst,lstToSave):
-        for img in lst:
-            open_cv_image = np.array(img)
+    def cropImages(self):
+        for num in range(0,len(self.tempWhiteBackgroundPictures)):
+            open_cv_image = np.array(self.tempWhiteBackgroundPictures[num])
             # pic = open_cv_image[:,:,0]
             # Convert RGB to BGR
             curr = open_cv_image[:, :, ::-1].copy()
@@ -66,7 +64,7 @@ class Worker(QObject):
             gray_blurred = cv.blur(imgray, (3, 3))
             detected_circles = cv.HoughCircles(gray_blurred,
                                                 cv.HOUGH_GRADIENT, 1, 20, param1=50,
-                                                param2=30, minRadius=0, maxRadius=0)
+                                                param2=30, minRadius=350, maxRadius=0)
 
             if detected_circles is not None:
                 # Convert the circle parameters a, b and r to integers.
@@ -80,17 +78,21 @@ class Worker(QObject):
                 minY = abs(b-r)
                 maxY = r+b
 
-                newPic = open_cv_image[minY:maxY, minX:maxX,:]
-                lstToSave.append(Image.fromarray(newPic))
+                newWhitePic = open_cv_image[minY:maxY, minX:maxX, :]
+                self.finWhiteBackgroundPictures.append((Image.fromarray(newWhitePic)))
+
+                # transparent_cv_image = np.array(self.tempTransparentBackgroundPictures[num])
+                # finTransparentImage = transparent_cv_image[minY:maxY, minX:maxX, :]
+                # self.finTransparentBackgroundPictures.append(Image.fromarray(finTransparentImage))
 
     def saveFiles(self):
         for i in range(0,len(self.imageNames)):
             nameWithExt = str(self.imageNames[i])
             splitArr = nameWithExt.split('.')
             name = splitArr[0]
-            transP = self.finTransparentBackgroundPictures[i]
+            # transP = self.finTransparentBackgroundPictures[i]
             whiteP = self.finWhiteBackgroundPictures[i]
-            transP.save(self.outputDir+'\\\\'+name+'Transparent.png')
+            # transP.save(self.outputDir+'\\\\'+name+'Transparent.png')
             whiteP.save(self.outputDir+'\\\\'+name+'White.png')
             self.progress.emit(self.pbNum)
         self.progress.emit(100-(len(self.inputFiles)*3*self.pbNum))
