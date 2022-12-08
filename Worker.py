@@ -17,7 +17,7 @@ class Worker(QObject):
         super(Worker, self).__init__()
         self.inputFiles = inputFiles
         self.outputDir = outputDir
-        self.pbNum = int(98/(len(inputFiles)*3))
+        self.pbNum = int(90/(len(inputFiles)*2))
         self.imageNames = []
         self.tempTransparentBackgroundPictures = []
         self.tempWhiteBackgroundPictures = []
@@ -37,7 +37,6 @@ class Worker(QObject):
                 splitDir = img.split('\\')
                 name = splitDir[-1]
                 output = remove(input, alpha_matting=True, session=self.session)
-                self.progress.emit(self.pbNum)
                 transP = output.rotate(270)
                 # self.tempTransparentBackgroundPictures.append(transP)
 
