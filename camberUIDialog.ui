@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>509</width>
-    <height>183</height>
+    <width>513</width>
+    <height>214</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -45,7 +45,7 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>120</y>
+      <y>150</y>
       <width>351</width>
       <height>31</height>
      </rect>
@@ -122,7 +122,7 @@
     <property name="geometry">
      <rect>
       <x>400</x>
-      <y>120</y>
+      <y>150</y>
       <width>91</width>
       <height>31</height>
      </rect>
@@ -135,13 +135,29 @@
     <property name="geometry">
      <rect>
       <x>20</x>
-      <y>160</y>
+      <y>190</y>
       <width>61</width>
       <height>16</height>
      </rect>
     </property>
     <property name="text">
      <string/>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="transparentCheckbox">
+    <property name="geometry">
+     <rect>
+      <x>9</x>
+      <y>116</y>
+      <width>191</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="layoutDirection">
+     <enum>Qt::RightToLeft</enum>
+    </property>
+    <property name="text">
+     <string>Transparent backgrounds included?</string>
     </property>
    </widget>
   </widget>
