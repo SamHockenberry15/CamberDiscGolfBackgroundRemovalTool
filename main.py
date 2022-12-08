@@ -47,28 +47,29 @@ class Main():
         self.ui.mainLabel.setText("Started!")
 
         self.thread = QThread()
-        self.thread2 = QThread()
 
-        indx = int(len(self.inputFiles)/2)
+        indx = len(self.inputFiles)
         self.worker = Worker(self.inputFiles[0:indx], self.outputDir, self.session,
                              self.ui.transparentCheckbox.isChecked())
-        self.worker2 = Worker(self.inputFiles[indx::], self.outputDir, self.session,
-                              self.ui.transparentCheckbox.isChecked())
-
         self.worker.moveToThread(self.thread)
-        self.worker2.moveToThread(self.thread2)
-
         self.thread.started.connect(self.worker.run)
         self.worker.progress.connect(self.reportProgress)
         self.worker.uiStatus.connect(self.setUiStatus)
         self.worker.finished.connect(self.finished)
         self.thread.start()
 
-        self.thread2.started.connect(self.worker2.run)
-        self.worker2.progress.connect(self.reportProgress)
-        self.worker2.uiStatus.connect(self.setUiStatus)
-        self.worker2.finished.connect(self.finished)
-        self.thread2.start()
+        if len(self.inputFiles) > 3:
+            self.thread2 = QThread()
+            indx = int(len(self.inputFiles) / 2)
+            self.worker2 = Worker(self.inputFiles[indx::], self.outputDir, self.session,
+                                  self.ui.transparentCheckbox.isChecked())
+
+            self.worker2.moveToThread(self.thread2)
+            self.thread2.started.connect(self.worker2.run)
+            self.worker2.progress.connect(self.reportProgress)
+            self.worker2.uiStatus.connect(self.setUiStatus)
+            self.worker2.finished.connect(self.finished)
+            self.thread2.start()
 
     def setUiStatus(self, value):
         self.ui.inputFileButton.setEnabled(value)
