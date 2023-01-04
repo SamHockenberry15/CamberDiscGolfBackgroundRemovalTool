@@ -62,5 +62,4 @@ class Worker(QObject):
             whiteP.save(self.outputDir+'\\\\'+name+'White.png')
             self.progress.emit(self.pbNum)
         self.progress.emit(100-(len(self.inputFiles)*3*self.pbNum))
-        self.uiStatus.emit(True)
         self.finished.emit()
