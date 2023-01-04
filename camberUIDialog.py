@@ -12,20 +12,13 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-import os
-import easygui as eg
-from PyQt5.QtCore import QThread
-import onnxruntime as ort
-
-from Worker import Worker
 
 class Ui_MainWindow(object):
-
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(509, 183)
+        MainWindow.resize(513, 214)
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(r"camberShirtLogo.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap("camberShirtLogo.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         MainWindow.setWindowIcon(icon)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
@@ -36,7 +29,7 @@ class Ui_MainWindow(object):
         self.outputSelection.setGeometry(QtCore.QRect(100, 71, 261, 31))
         self.outputSelection.setObjectName("outputSelection")
         self.progressBar = QtWidgets.QProgressBar(self.centralwidget)
-        self.progressBar.setGeometry(QtCore.QRect(10, 120, 351, 31))
+        self.progressBar.setGeometry(QtCore.QRect(10, 150, 351, 31))
         self.progressBar.setLayoutDirection(QtCore.Qt.RightToLeft)
         self.progressBar.setProperty("value", 0)
         self.progressBar.setTextVisible(True)
@@ -57,27 +50,20 @@ class Ui_MainWindow(object):
         self.inputFileLabel.setGeometry(QtCore.QRect(10, 19, 51, 31))
         self.inputFileLabel.setObjectName("inputFileLabel")
         self.executeButton = QtWidgets.QPushButton(self.centralwidget)
-        self.executeButton.setGeometry(QtCore.QRect(400, 120, 91, 31))
+        self.executeButton.setGeometry(QtCore.QRect(400, 150, 91, 31))
         self.executeButton.setObjectName("executeButton")
         self.mainLabel = QtWidgets.QLabel(self.centralwidget)
-        self.mainLabel.setGeometry(QtCore.QRect(20, 160, 61, 16))
+        self.mainLabel.setGeometry(QtCore.QRect(20, 190, 61, 16))
         self.mainLabel.setText("")
         self.mainLabel.setObjectName("mainLabel")
+        self.transparentCheckbox = QtWidgets.QCheckBox(self.centralwidget)
+        self.transparentCheckbox.setGeometry(QtCore.QRect(9, 116, 191, 20))
+        self.transparentCheckbox.setLayoutDirection(QtCore.Qt.RightToLeft)
+        self.transparentCheckbox.setObjectName("transparentCheckbox")
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
-
-        self.inputFileButton.clicked.connect(self.selectInputFiles)
-        self.outputDirButton.clicked.connect(self.selectOutputDir)
-        self.executeButton.clicked.connect(self.startEditing)
-
-        try:
-            wd = sys._MEIPASS
-        except AttributeError:
-            wd = os.getcwd()
-        file_path = os.path.join(wd,'u2net.onnx')
-        self.session = ort.InferenceSession(file_path)
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -87,50 +73,4 @@ class Ui_MainWindow(object):
         self.outputFileLabel.setText(_translate("MainWindow", "Output Directory"))
         self.inputFileLabel.setText(_translate("MainWindow", "Input Files"))
         self.executeButton.setText(_translate("MainWindow", "Execute"))
-
-    def selectInputFiles(self):
-        self.inputFiles = eg.fileopenbox(title='Select image file(s)', multiple=True)
-        self.inputSelection.setText(str(self.inputFiles))
-
-    def selectOutputDir(self):
-        self.outputDir = eg.diropenbox(title='Select output directory')
-        self.outputSelection.setText(str(self.outputDir))
-
-    def startEditing(self):
-        self.progressBar.setValue(0)
-        self.mainLabel.setText("Started!")
-
-        self.thread = QThread()
-        self.worker = Worker(self.inputFiles,self.outputDir, self.session)
-
-        self.worker.moveToThread(self.thread)
-
-        self.thread.started.connect(self.worker.run)
-        self.worker.progress.connect(self.reportProgress)
-        self.worker.uiStatus.connect(self.setUiStatus)
-        self.worker.finished.connect(self.finished)
-        self.thread.start()
-
-    def setUiStatus(self, value):
-        self.inputFileButton.setEnabled(value)
-        self.outputDirButton.setEnabled(value)
-        self.executeButton.setEnabled(value)
-        self.inputSelection.setReadOnly(not value)
-        self.outputSelection.setReadOnly(not value)
-
-    def reportProgress(self, newVal):
-        val = self.progressBar.value()
-        self.progressBar.setValue(newVal + val)
-
-    def finished(self):
-        self.mainLabel.setText("Finished!")
-        self.thread.quit()
-
-if __name__ == "__main__":
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    MainWindow = QtWidgets.QMainWindow()
-    ui = Ui_MainWindow()
-    ui.setupUi(MainWindow)
-    MainWindow.show()
-    sys.exit(app.exec_())
+        self.transparentCheckbox.setText(_translate("MainWindow", "Transparent backgrounds included?"))

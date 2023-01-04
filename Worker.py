@@ -13,7 +13,7 @@ class Worker(QObject):
     uiStatus = pyqtSignal(bool)
     finished = pyqtSignal()
 
-    def __init__(self, inputFiles, outputDir, session):
+    def __init__(self, inputFiles, outputDir, session, transparent):
         super(Worker, self).__init__()
         self.inputFiles = inputFiles
         self.outputDir = outputDir
@@ -24,6 +24,7 @@ class Worker(QObject):
         self.finWhiteBackgroundPictures = []
         self.finTransparentBackgroundPictures = []
         self.session = SimpleSession("u2net.onnx", session)
+        self.transparent = transparent
 
     def run(self):
         self.uiStatus.emit(False)
@@ -89,11 +90,11 @@ class Worker(QObject):
             nameWithExt = str(self.imageNames[i])
             splitArr = nameWithExt.split('.')
             name = splitArr[0]
-            # transP = self.finTransparentBackgroundPictures[i]
-            whiteP = self.finWhiteBackgroundPictures[i]
-            # transP.save(self.outputDir+'\\\\'+name+'Transparent.png')
+            if(self.transparent):
+                transP = self.transparentBackgroundPictures[i]
+                transP.save(self.outputDir+'\\\\'+name+'Transparent.png')
+            whiteP = self.whiteBackgroundPictures[i]
             whiteP.save(self.outputDir+'\\\\'+name+'White.png')
             self.progress.emit(self.pbNum)
         self.progress.emit(100-(len(self.inputFiles)*3*self.pbNum))
-        self.uiStatus.emit(True)
         self.finished.emit()
