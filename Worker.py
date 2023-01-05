@@ -29,7 +29,6 @@ class Worker(QObject):
     def run(self):
         self.uiStatus.emit(False)
         self.executePhotoEditing()
-        self.saveFiles()
 
     def executePhotoEditing(self):
         if len(self.inputFiles) != 0 and len(self.outputDir) != 0:
@@ -39,7 +38,7 @@ class Worker(QObject):
                 name = splitDir[-1]
                 output = remove(input, alpha_matting=True, session=self.session)
                 transP = output.rotate(270)
-                # self.tempTransparentBackgroundPictures.append(transP)
+                self.tempTransparentBackgroundPictures.append(transP)
 
                 output.load()
                 input_again_width, input_again_height = output.size
@@ -52,11 +51,12 @@ class Worker(QObject):
                 self.progress.emit(self.pbNum)
 
             self.cropImages()
+            self.progress.emit(100 - (len(self.inputFiles) * 3 * self.pbNum))
+            self.finished.emit()
 
     def cropImages(self):
         for num in range(0,len(self.tempWhiteBackgroundPictures)):
             open_cv_image = np.array(self.tempWhiteBackgroundPictures[num])
-            # pic = open_cv_image[:,:,0]
             # Convert RGB to BGR
             curr = open_cv_image[:, :, ::-1].copy()
 
@@ -79,11 +79,19 @@ class Worker(QObject):
                 maxY = r+b
 
                 newWhitePic = open_cv_image[minY:maxY, minX:maxX, :]
-                self.finWhiteBackgroundPictures.append((Image.fromarray(newWhitePic)))
+                self.saveFile(Image.fromarray(newWhitePic),num)
 
-                # transparent_cv_image = np.array(self.tempTransparentBackgroundPictures[num])
-                # finTransparentImage = transparent_cv_image[minY:maxY, minX:maxX, :]
-                # self.finTransparentBackgroundPictures.append(Image.fromarray(finTransparentImage))
+
+    def saveFile(self, img, imgNum):
+        nameWithExt = str(self.imageNames[imgNum])
+        splitArr = nameWithExt.split('.')
+        name = splitArr[0]
+        if(self.transparent):
+            transP = self.tempTransparentBackgroundPictures[imgNum]
+            transP.save(self.outputDir+'\\\\'+name+'Transparent.png')
+        whiteP = img
+        whiteP.save(self.outputDir+'\\\\'+name+'White.png')
+        self.progress.emit(self.pbNum)
 
     def saveFiles(self):
         for i in range(0,len(self.imageNames)):
@@ -91,9 +99,9 @@ class Worker(QObject):
             splitArr = nameWithExt.split('.')
             name = splitArr[0]
             if(self.transparent):
-                transP = self.transparentBackgroundPictures[i]
+                transP = self.tempTransparentBackgroundPictures[i]
                 transP.save(self.outputDir+'\\\\'+name+'Transparent.png')
-            whiteP = self.whiteBackgroundPictures[i]
+            whiteP = self.finWhiteBackgroundPictures[i]
             whiteP.save(self.outputDir+'\\\\'+name+'White.png')
             self.progress.emit(self.pbNum)
         self.progress.emit(100-(len(self.inputFiles)*3*self.pbNum))
