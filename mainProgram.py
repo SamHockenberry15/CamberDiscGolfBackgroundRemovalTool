@@ -1,12 +1,10 @@
-import easygui as eg
+import sys
+
 from PyQt5.QtCore import QThread
+from PyQt5 import QtWidgets
 
 from Worker import Worker
-import os
-import onnxruntime as ort
-
-from PyQt5 import QtWidgets
-import sys
+import easygui as eg
 
 class Main():
 
@@ -25,12 +23,12 @@ class Main():
         self.ui.outputDirButton.clicked.connect(self.selectOutputDir)
         self.ui.executeButton.clicked.connect(self.startEditing)
 
-        try:
-            wd = sys._MEIPASS
-        except AttributeError:
-            wd = os.getcwd()
-        file_path = os.path.join(wd, 'u2net.onnx')
-        self.session = ort.InferenceSession(file_path)
+        # try:
+        #     wd = sys._MEIPASS
+        # except AttributeError:
+        #     wd = os.getcwd()
+        # file_path = os.path.join(wd, 'u2net.onnx')
+        # self.session = ort.InferenceSession(file_path)
 
     def selectInputFiles(self):
         self.inputFiles = eg.fileopenbox(title='Select image file(s)', multiple=True)
@@ -54,16 +52,16 @@ class Main():
             self.threadsDone = False
             self.thread = QThread()
 
-            self.worker = Worker(self.inputFiles, self.outputDir, self.session,
+            self.worker = Worker(self.inputFiles, self.outputDir,
                                  self.ui.transparentCheckbox.isChecked())
 
 
             if len(self.inputFiles) > 3:
                 self.thread2 = QThread()
                 indx = int(len(self.inputFiles) / 2)
-                self.worker = Worker(self.inputFiles[0:indx], self.outputDir, self.session,
+                self.worker = Worker(self.inputFiles[0:indx], self.outputDir,
                                      self.ui.transparentCheckbox.isChecked())
-                self.worker2 = Worker(self.inputFiles[indx::], self.outputDir, self.session,
+                self.worker2 = Worker(self.inputFiles[indx::], self.outputDir,
                                       self.ui.transparentCheckbox.isChecked())
 
                 self.worker2.moveToThread(self.thread2)
@@ -124,7 +122,7 @@ class Main():
             self.ui.progressBar.setValue(100)
 
 import camberUIDialog
-# PyInstaller command: pyinstaller -F camberUIDialog.py -n "Camber Disc Golf Background Removal Tool" --icon=camberShirtLogo.png  --add-data "u2net.onnx;." --add-data "camberShirtLogo.png;."
+# PyInstaller command: pyinstaller -F camberUIDialog.py -n "Camber Disc Golf Background Removal Tool" --icon=camberShirtLogo.png --add-data "camberShirtLogo.png;."
 
 if __name__ == "__main__":
     Main().run()

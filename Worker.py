@@ -1,11 +1,7 @@
-from PIL import Image, ImageDraw
 from PyQt5.QtCore import QObject, pyqtSignal
-# from rembg import remove
-from rembg.session_simple import SimpleSession
-
+from PIL import Image, ImageDraw
 import numpy as np
 import cv2 as cv
-
 
 class Worker(QObject):
 
@@ -13,7 +9,7 @@ class Worker(QObject):
     uiStatus = pyqtSignal(bool)
     finished = pyqtSignal()
 
-    def __init__(self, inputFiles, outputDir, session, transparent):
+    def __init__(self, inputFiles, outputDir, transparent):
         super(Worker, self).__init__()
         self.inputFiles = inputFiles
         self.outputDir = outputDir
@@ -23,7 +19,7 @@ class Worker(QObject):
         self.tempWhiteBackgroundPictures = []
         self.finWhiteBackgroundPictures = []
         self.finTransparentBackgroundPictures = []
-        self.session = SimpleSession("u2net.onnx", session)
+        # self.session = SimpleSession("u2net.onnx", session)
         self.transparent = transparent
 
     def run(self):
@@ -32,10 +28,75 @@ class Worker(QObject):
 
     def executePhotoEditing(self):
         if len(self.inputFiles) != 0 and len(self.outputDir) != 0:
+            ct = -1
             for img in self.inputFiles:
-                input = Image.open(img)
+                input = cv.imread(img,cv.IMREAD_UNCHANGED)
+                input = cv.cvtColor(input, cv.COLOR_BGR2RGB)
                 splitDir = img.split('\\')
                 name = splitDir[-1]
+                open_cv_image = np.array(input)
+                # Convert RGB to BGR
+                curr = open_cv_image[:, :, ::-1].copy()
+
+                scale_percent = 10
+
+                scaled_width = curr.shape[1] * scale_percent / 100
+                scaled_height = curr.shape[0] * scale_percent / 100
+                scaled_width_int = int(scaled_width)
+                scaled_height_int = int(scaled_height)
+                dim = (scaled_width_int, scaled_height_int)
+
+                # resize image
+                resized = cv.resize(curr, dim, interpolation=cv.INTER_AREA)
+
+                imgray = cv.cvtColor(resized, cv.COLOR_BGR2GRAY)
+                gray_blurred = cv.blur(imgray, (3, 3))
+                detected_circles = cv.HoughCircles(gray_blurred,
+                                                   cv.HOUGH_GRADIENT, 1, 85, param1=50,
+                                                   param2=30, minRadius=70, maxRadius=0)
+
+                if detected_circles is not None:
+                    # Convert the circle parameters a, b and r to integers.
+                    detected_circles = np.uint16(np.around(detected_circles))
+                    pt = detected_circles[0, 0]
+
+                    a, b, r = pt[0], pt[1], pt[2]
+
+                    a = a * 10
+                    b = b * 10
+                    r = r * 9.85
+
+                    minX = abs(a - r)
+                    maxX = r + a
+                    minY = abs(b - r + 30)
+                    maxY = r + b + 30
+
+                    height = open_cv_image.shape[0]
+                    width = open_cv_image.shape[1]
+                    lum_img = Image.new("L", [width, height], 0)
+
+                    draw = ImageDraw.Draw(lum_img)
+                    draw.pieslice([(minX, minY), (maxX, maxY)], 0, 360,
+                                  fill=255, outline="white")
+                    img_arr = np.array(open_cv_image)
+                    lum_img_arr = np.array(lum_img)
+                    final_img_arr = np.dstack((img_arr, lum_img_arr))
+
+                    intMinX = int(minX)
+                    intMaxX = int(maxX)
+                    intMinY = int(minY)
+                    intMaxY = int(maxY)
+
+                    final_img_arr = final_img_arr[intMinY:intMaxY, intMinX:intMaxX, :]
+                    fin_img = Image.fromarray(final_img_arr)
+                    fin_img = fin_img.rotate(270, fillcolor=(255, 255, 255))
+                    whiteBackground = Image.new("RGB", (int(maxX - minX), int(maxY - minY)), (255, 255, 255))
+                    whiteBackground.paste(fin_img, box=None, mask=fin_img.split()[3])
+                    ct+=1
+                    self.imageNames.append(name)
+                    self.progress.emit(self.pbNum)
+                    self.saveFile(whiteBackground, ct)
+
                 # output = remove(input, alpha_matting=True, session=self.session)
                 # transP = output.rotate(270)
                 # self.tempTransparentBackgroundPictures.append(transP)
@@ -46,78 +107,11 @@ class Worker(QObject):
                 # whiteBackground.paste(input, mask=input.split()[3])
                 # finalWhiteBackground = whiteBackground.rotate(270, fillcolor=(255, 255, 255))
 
-                self.tempWhiteBackgroundPictures.append(input)
-                self.imageNames.append(name)
-                self.progress.emit(self.pbNum)
+                # self.tempWhiteBackgroundPictures.append(input)
 
-            self.cropImages()
+            # self.cropImages()
             self.progress.emit(100 - (len(self.inputFiles) * 3 * self.pbNum))
             self.finished.emit()
-
-    def cropImages(self):
-        for num in range(0,len(self.tempWhiteBackgroundPictures)):
-            open_cv_image = np.array(self.tempWhiteBackgroundPictures[num])
-            # Convert RGB to BGR
-            curr = open_cv_image[:, :, ::-1].copy()
-
-            scale_percent = 10
-
-            scaled_width = curr.shape[1] * scale_percent / 100
-            scaled_height = curr.shape[0] * scale_percent / 100
-            scaled_width_int = int(scaled_width)
-            scaled_height_int = int(scaled_height)
-            dim = (scaled_width_int, scaled_height_int)
-
-            # resize image
-            resized = cv.resize(curr, dim, interpolation=cv.INTER_AREA)
-
-
-
-            imgray = cv.cvtColor(resized, cv.COLOR_BGR2GRAY)
-            gray_blurred = cv.blur(imgray, (3, 3))
-            detected_circles = cv.HoughCircles(gray_blurred,
-                                                cv.HOUGH_GRADIENT, 1, 85, param1=50,
-                                                param2=30, minRadius=70, maxRadius=0)
-
-            if detected_circles is not None:
-                # Convert the circle parameters a, b and r to integers.
-                detected_circles = np.uint16(np.around(detected_circles))
-                pt = detected_circles[0,0]
-
-                a, b, r = pt[0], pt[1], pt[2]
-
-                a = a * 10
-                b = b * 10
-                r = r * 9.85
-
-                minX = abs(a-r)
-                maxX = r+a
-                minY = abs(b-r+30)
-                maxY = r+b+30
-
-                height = open_cv_image.shape[0]
-                width = open_cv_image.shape[1]
-                lum_img = Image.new("L", [width, height], 0)
-
-                draw = ImageDraw.Draw(lum_img)
-                draw.pieslice([(minX, minY), (maxX, maxY)], 0, 360,
-                              fill=255, outline="white")
-                img_arr = np.array(open_cv_image)
-                lum_img_arr = np.array(lum_img)
-                final_img_arr = np.dstack((img_arr, lum_img_arr))
-
-                intMinX = int(minX)
-                intMaxX = int(maxX)
-                intMinY = int(minY)
-                intMaxY = int(maxY)
-
-                final_img_arr = final_img_arr[intMinY:intMaxY, intMinX:intMaxX, :]
-                fin_img = Image.fromarray(final_img_arr)
-                fin_img = fin_img.rotate(270, fillcolor=(255, 255, 255))
-                whiteBackground = Image.new("RGB", (int(maxX-minX), int(maxY-minY)), (255, 255, 255))
-                whiteBackground.paste(fin_img,box=None, mask=fin_img.split()[3])
-                self.saveFile(whiteBackground,num)
-
 
 
     def saveFile(self, img, imgNum):
@@ -144,3 +138,4 @@ class Worker(QObject):
             self.progress.emit(self.pbNum)
         self.progress.emit(100-(len(self.inputFiles)*3*self.pbNum))
         self.finished.emit()
+
