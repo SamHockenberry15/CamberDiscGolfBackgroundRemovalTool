@@ -23,13 +23,6 @@ class Main():
         self.ui.outputDirButton.clicked.connect(self.selectOutputDir)
         self.ui.executeButton.clicked.connect(self.startEditing)
 
-        # try:
-        #     wd = sys._MEIPASS
-        # except AttributeError:
-        #     wd = os.getcwd()
-        # file_path = os.path.join(wd, 'u2net.onnx')
-        # self.session = ort.InferenceSession(file_path)
-
     def selectInputFiles(self):
         self.inputFiles = eg.fileopenbox(title='Select image file(s)', multiple=True)
         self.ui.inputSelection.setText(str(self.inputFiles))
@@ -122,7 +115,7 @@ class Main():
             self.ui.progressBar.setValue(100)
 
 import camberUIDialog
-# PyInstaller command: pyinstaller -F camberUIDialog.py -n "Camber Disc Golf Background Removal Tool" --icon=camberShirtLogo.png --add-data "camberShirtLogo.png;."
+# PyInstaller command: pyinstaller -F mainProgram.py -n "Camber Disc Golf Background Removal Tool" --icon=camberShirtLogo.png --add-data "camberShirtLogo.png;."
 
 if __name__ == "__main__":
     Main().run()

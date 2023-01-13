@@ -8,6 +8,8 @@ class Worker(QObject):
     progress = pyqtSignal(int)
     uiStatus = pyqtSignal(bool)
     finished = pyqtSignal()
+    #Scaled percentage for hough circle image processing
+    scale_percent = 10
 
     def __init__(self, inputFiles, outputDir, transparent):
         super(Worker, self).__init__()
@@ -19,7 +21,6 @@ class Worker(QObject):
         self.tempWhiteBackgroundPictures = []
         self.finWhiteBackgroundPictures = []
         self.finTransparentBackgroundPictures = []
-        # self.session = SimpleSession("u2net.onnx", session)
         self.transparent = transparent
 
     def run(self):
@@ -28,7 +29,6 @@ class Worker(QObject):
 
     def executePhotoEditing(self):
         if len(self.inputFiles) != 0 and len(self.outputDir) != 0:
-            ct = -1
             for img in self.inputFiles:
                 input = cv.imread(img,cv.IMREAD_UNCHANGED)
                 input = cv.cvtColor(input, cv.COLOR_BGR2RGB)
@@ -38,42 +38,20 @@ class Worker(QObject):
                 # Convert RGB to BGR
                 curr = open_cv_image[:, :, ::-1].copy()
 
-                scale_percent = 10
+                dim = self.getScaledDim(curr.shape[0],curr.shape[1],self.scale_percent)
 
-                scaled_width = curr.shape[1] * scale_percent / 100
-                scaled_height = curr.shape[0] * scale_percent / 100
-                scaled_width_int = int(scaled_width)
-                scaled_height_int = int(scaled_height)
-                dim = (scaled_width_int, scaled_height_int)
-
-                # resize image
-                resized = cv.resize(curr, dim, interpolation=cv.INTER_AREA)
-
-                imgray = cv.cvtColor(resized, cv.COLOR_BGR2GRAY)
-                gray_blurred = cv.blur(imgray, (3, 3))
-                detected_circles = cv.HoughCircles(gray_blurred,
-                                                   cv.HOUGH_GRADIENT, 1, 85, param1=50,
-                                                   param2=30, minRadius=70, maxRadius=0)
+                detected_circles = self.detectCircles(curr, dim)
 
                 if detected_circles is not None:
                     # Convert the circle parameters a, b and r to integers.
                     detected_circles = np.uint16(np.around(detected_circles))
                     pt = detected_circles[0, 0]
 
-                    a, b, r = pt[0], pt[1], pt[2]
+                    minX, maxX, minY, maxY = self.getCoordinates(pt)
 
-                    a = a * 10
-                    b = b * 10
-                    r = r * 9.85
-
-                    minX = abs(a - r)
-                    maxX = r + a
-                    minY = abs(b - r + 30)
-                    maxY = r + b + 30
-
-                    height = open_cv_image.shape[0]
-                    width = open_cv_image.shape[1]
-                    lum_img = Image.new("L", [width, height], 0)
+                    original_height = open_cv_image.shape[0]
+                    original_width = open_cv_image.shape[1]
+                    lum_img = Image.new("L", [original_width, original_height], 0)
 
                     draw = ImageDraw.Draw(lum_img)
                     draw.pieslice([(minX, minY), (maxX, maxY)], 0, 360,
@@ -92,50 +70,49 @@ class Worker(QObject):
                     fin_img = fin_img.rotate(270, fillcolor=(255, 255, 255))
                     whiteBackground = Image.new("RGB", (int(maxX - minX), int(maxY - minY)), (255, 255, 255))
                     whiteBackground.paste(fin_img, box=None, mask=fin_img.split()[3])
-                    ct+=1
                     self.imageNames.append(name)
                     self.progress.emit(self.pbNum)
-                    self.saveFile(whiteBackground, ct)
+                    self.saveFile(whiteBackground, name)
 
-                # output = remove(input, alpha_matting=True, session=self.session)
-                # transP = output.rotate(270)
-                # self.tempTransparentBackgroundPictures.append(transP)
-                #
-                # output.load()
-                # input_again_width, input_again_height = input.size
-                # whiteBackground = Image.new("RGB", (input_again_width + 50, input_again_height + 50), (255, 255, 255))
-                # whiteBackground.paste(input, mask=input.split()[3])
-                # finalWhiteBackground = whiteBackground.rotate(270, fillcolor=(255, 255, 255))
-
-                # self.tempWhiteBackgroundPictures.append(input)
-
-            # self.cropImages()
             self.progress.emit(100 - (len(self.inputFiles) * 3 * self.pbNum))
             self.finished.emit()
 
+    def getScaledDim(self,height, width, scale_percent):
+        scaled_width = width * scale_percent / 100
+        scaled_height = height * scale_percent / 100
+        scaled_width_int = int(scaled_width)
+        scaled_height_int = int(scaled_height)
+        return scaled_width_int, scaled_height_int
 
-    def saveFile(self, img, imgNum):
-        nameWithExt = str(self.imageNames[imgNum])
-        splitArr = nameWithExt.split('.')
+    def detectCircles(self, img, dim):
+        resized = cv.resize(img, dim, interpolation=cv.INTER_AREA)
+        imgray = cv.cvtColor(resized, cv.COLOR_BGR2GRAY)
+        gray_blurred = cv.blur(imgray, (3, 3))
+        return cv.HoughCircles(gray_blurred,
+                                           cv.HOUGH_GRADIENT, 1, 85, param1=50,
+                                           param2=30, minRadius=70, maxRadius=0)
+
+    def getCoordinates(self, point):
+        a, b, r = point[0], point[1], point[2]
+        #Required to remove approximate error that comes from changing double -> int
+        y_offset = 30
+        #Required to shrink circle to edges of disc
+        radius_offset = 0.15
+
+        a = a * self.scale_percent
+        b = b * self.scale_percent
+        r = r * (self.scale_percent - radius_offset)
+
+        return abs(a - r), r + a, abs(b - r + y_offset), r + b + y_offset
+
+
+    def saveFile(self, img, nameWithExt):
+        splitArr = str(nameWithExt).split('.')
         name = splitArr[0]
         if(self.transparent):
-            transP = self.tempTransparentBackgroundPictures[imgNum]
-            transP.save(self.outputDir+'\\\\'+name+'Transparent.png')
+            print("Not implemented yet with new rewrite")
+            # transP = self.tempTransparentBackgroundPictures[imgNum]
+            # transP.save(self.outputDir+'\\\\'+name+'Transparent.png')
         whiteP = img
         whiteP.save(self.outputDir+'\\\\'+name+'White.png')
         self.progress.emit(self.pbNum)
-
-    def saveFiles(self):
-        for i in range(0,len(self.imageNames)):
-            nameWithExt = str(self.imageNames[i])
-            splitArr = nameWithExt.split('.')
-            name = splitArr[0]
-            if(self.transparent):
-                transP = self.tempTransparentBackgroundPictures[i]
-                transP.save(self.outputDir+'\\\\'+name+'Transparent.png')
-            whiteP = self.finWhiteBackgroundPictures[i]
-            whiteP.save(self.outputDir+'\\\\'+name+'White.png')
-            self.progress.emit(self.pbNum)
-        self.progress.emit(100-(len(self.inputFiles)*3*self.pbNum))
-        self.finished.emit()
-
