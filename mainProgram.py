@@ -17,7 +17,6 @@ class Main():
         mainWindow.show()
         sys.exit(app.exec_())
 
-
     def finishSetup(self):
         self.ui.inputFileButton.clicked.connect(self.selectInputFiles)
         self.ui.outputDirButton.clicked.connect(self.selectOutputDir)
@@ -47,7 +46,6 @@ class Main():
 
             self.worker = Worker(self.inputFiles, self.outputDir,
                                  self.ui.transparentCheckbox.isChecked())
-
 
             if len(self.inputFiles) > 3:
                 self.thread2 = QThread()

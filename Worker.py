@@ -90,7 +90,7 @@ class Worker(QObject):
         gray_blurred = cv.blur(imgray, (3, 3))
         return cv.HoughCircles(gray_blurred,
                                            cv.HOUGH_GRADIENT, 1, 85, param1=50,
-                                           param2=30, minRadius=70, maxRadius=0)
+                                           param2=30, minRadius=72, maxRadius=0)
 
     def getCoordinates(self, point):
         a, b, r = point[0], point[1], point[2]
