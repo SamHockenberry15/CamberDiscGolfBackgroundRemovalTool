@@ -8,6 +8,9 @@ import easygui as eg
 
 class Main():
 
+    croppedSuccessfully = 0
+    unableToBeCropped = 0
+
     def run(self):
         app = QtWidgets.QApplication(sys.argv)
         mainWindow = QtWidgets.QMainWindow()
@@ -25,6 +28,7 @@ class Main():
     def selectInputFiles(self):
         self.inputFiles = eg.fileopenbox(title='Select image file(s)', multiple=True)
         self.ui.inputSelection.setText(str(self.inputFiles))
+        self.ui.fileCountSelectedLCD.display(len(self.inputFiles))
 
     def selectOutputDir(self):
         self.outputDir = eg.diropenbox(title='Select output directory')
@@ -32,6 +36,10 @@ class Main():
 
     def startEditing(self):
         self.isFinished = False
+        print("Starting editing process...")
+        self.croppedSuccessfully = 0
+        self.unableToBeCropped = 0
+        self.ui.fileCountSuccessLCD.display(0)
         try:
             if hasattr(self,"thread"):
                 self.thread.quit()
@@ -83,15 +91,19 @@ class Main():
         val = self.ui.progressBar.value()
         self.ui.progressBar.setValue(newVal + val)
 
-    def endThread(self):
+    def endThread(self, success, failed):
         self.thread.quit()
+        self.croppedSuccessfully = success + self.croppedSuccessfully
+        self.unableToBeCropped = failed + self.unableToBeCropped
         if self.isFinished or not hasattr(self,"thread2"):
             self.endExec()
         else:
             self.isFinished = True
 
-    def endThread2(self):
+    def endThread2(self, success, failed):
         self.thread2.quit()
+        self.croppedSuccessfully = success + self.croppedSuccessfully
+        self.unableToBeCropped = failed + self.unableToBeCropped
         if self.isFinished:
             self.endExec()
         else:
@@ -99,6 +111,7 @@ class Main():
 
     def endExec(self):
         self.setUiStatus(True)
+        self.ui.fileCountSuccessLCD.display(self.croppedSuccessfully)
         self.ui.mainLabel.setText("Finished!")
         self.ui.progressBar.setValue(100)
 

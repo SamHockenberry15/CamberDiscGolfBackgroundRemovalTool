@@ -7,10 +7,12 @@ class Worker(QObject):
 
     progress = pyqtSignal(int)
     uiStatus = pyqtSignal(bool)
-    finished = pyqtSignal()
+    finished = pyqtSignal(int, int)
     #Scaled percentage for hough circle image processing
     scale = .3
     minRadius = 0
+    croppedSuccessfully = 0
+    unableToBeCropped = 0
 
     def __init__(self, inputFiles, outputDir, transparent):
         super(Worker, self).__init__()
@@ -26,18 +28,19 @@ class Worker(QObject):
 
     def run(self):
         self.uiStatus.emit(False)
-        self.executePhotoEditing()
+        self.executePhotoEditing(cv.COLOR_BGR2HSV)
 
-    def executePhotoEditing(self):
+    def executePhotoEditing(self, colorSpace):
         if len(self.inputFiles) != 0 and len(self.outputDir) != 0:
             for img in self.inputFiles:
                 input = cv.imread(img,cv.IMREAD_UNCHANGED)
                 input = cv.resize(input,(0,0),fx = self.scale, fy = self.scale)
                 self.minRadius = int(int(input.shape[0]) * (3/8))
 
-                # cv.imshow("output", input)
+                # cv.imshow("output", input)  Have a recursive call ONCE changing the input params of the cvtColor - inverse color space for White color objects
                 # cv.waitKey(0)
-                input_hsv = cv.cvtColor(input, cv.COLOR_BGR2HSV)
+                input_hsv = cv.cvtColor(input, colorSpace)
+                # input_hsv = cv.bitwise_not(input)
                 splitDir = img.split('\\')
                 name = splitDir[-1]
                 open_cv_image = np.array(input_hsv)
@@ -47,9 +50,16 @@ class Worker(QObject):
                 # dim = self.getScaledDim(curr.shape[0],curr.shape[1],self.scale_percent)
 
                 detected_circles = self.detectCircles(curr)
-                circles = detected_circles
+
+                # show the output image
+                # imgray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+                # input_hsv = cv.cvtColor(curr, cv.COLOR_BGR2GRAY)
+                # cv.imshow("output", np.hstack([input_hsv, input]))
+                # cv.waitKey(0)
+
 
                 if detected_circles is not None:
+                    self.croppedSuccessfully = self.croppedSuccessfully + 1
                     # Convert the circle parameters a, b and r to integers.
                     detected_circles = np.uint16(np.around(detected_circles))
                     pt = detected_circles[0, 0]
@@ -99,9 +109,12 @@ class Worker(QObject):
                     self.imageNames.append(name)
                     self.progress.emit(self.pbNum)
                     self.saveFile(whiteBackground, name)
+                else:
+                    self.unableToBeCropped = self.unableToBeCropped + 1
+                    print("No circles found for: " + img)
 
             self.progress.emit(100 - (len(self.inputFiles) * 3 * self.pbNum))
-            self.finished.emit()
+            self.finished.emit(self.croppedSuccessfully, self.unableToBeCropped)
 
     def getScaledDim(self,height, width, scale_percent):
         scaled_width = width * scale_percent / 100
@@ -140,7 +153,7 @@ class Worker(QObject):
     def saveFile(self, img, nameWithExt):
         splitArr = str(nameWithExt).split('.')
         name = splitArr[0]
-        if(self.transparent):
+        if self.transparent:
             print("Not implemented yet with new rewrite")
             # transP = self.tempTransparentBackgroundPictures[imgNum]
             # transP.save(self.outputDir+'\\\\'+name+'Transparent.png')
